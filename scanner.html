@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escáner QR</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: Arial;
+    background: #d7d6d6;
+  }
+  #scanner-container {
+    width: 320px;
+    height: 240px;
+    background: #000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 50px;
+    border-radius: 15px;
+    overflow: hidden;
+  }
+  #info {
+    margin-top: 20px;
+    padding: 20px;
+    background: #1b3570;
+    border-radius: 15px;
+    width: 340px;
+    text-align: left;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  #info h3 { text-align: center; color: #ffffff; }
+  .dato {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 8px;
+    margin: 5px 0;
+  }
+  #mensaje {
+    padding: 10px;
+    border-radius: 10px;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div id="scanner-container">
+    <img src="http://127.0.0.1:8000/video_feed" width="320" height="240">
+</div>
+
+<div id="info">
+    <h3>Información</h3>
+    <div id="mensaje">Esperando QR...</div>
+    <div id="qr_data">Escanea un QR para ver la información</div>
+</div>
+
+<script>
+async function actualizarQR() {
+    try {
+        const res = await fetch("http://127.0.0.1:8000/ultimo_qr");
+        const data = await res.json();
+
+        const qrDiv = document.getElementById("qr_data");
+        const msgDiv = document.getElementById("mensaje");
+
+        // Mensaje y color según estado
+        msgDiv.innerText = data.message;
+        if (data.status === "ok") msgDiv.style.background = "#4caf50";
+        else if (data.status === "full") msgDiv.style.background = "#f44336";
+        else if (data.status === "error") msgDiv.style.background = "#ff9800";
+        else msgDiv.style.background = "#888";
+
+        // Mostrar datos si QR válido
+        if (data.qr_data) {
+            const qrObj = typeof data.qr_data === "string" ? JSON.parse(data.qr_data) : data.qr_data;
+            qrDiv.innerHTML = `
+                <p class="dato"><i class="fa-solid fa-box"></i> <b>Drawer ID:</b> ${qrObj.drawer_id || "N/A"}</p>
+                <p class="dato"><i class="fa-solid fa-plane"></i> <b>Vuelo:</b> ${qrObj.flight_number || "N/A"}</p>
+                <p class="dato"><i class="fa-solid fa-cubes"></i> <b>Total en Drawer:</b> ${qrObj.total_drawer ?? 0}</p>
+                <p class="dato"><i class="fa-solid fa-egg"></i> <b>Categoría:</b> ${qrObj.drawer_category || "N/A"}</p>
+                <p class="dato"><i class="fa-solid fa-user-tie"></i> <b>Cliente:</b> ${qrObj.customer_name || "N/A"}</p>
+                <p class="dato"><i class="fa-solid fa-calendar"></i> <b>Caducidad:</b> ${qrObj.expiry_date || "N/A"}</p>
+                <p class="dato"><i class="fa-solid fa-boxes-stacked"></i> <b>Contador Drawer:</b> ${data.current}/${data.capacity}</p>
+            `;
+        } else {
+            qrDiv.innerText = "Escanea un QR válido para ver la información";
+        }
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// Actualizar cada segundo
+setInterval(actualizarQR, 1000);
+</script>
+</body>
+</html>
