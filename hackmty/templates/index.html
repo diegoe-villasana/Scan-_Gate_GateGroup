@@ -3,14 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <title>Predicción de Consumo</title>
+    <style>
+        header {
+            background-color: #007BFF; /* Azul */
+            color: white;              
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-family: Arial, sans-serif;
+        }
+
+        header img {
+            height: 50px;
+            margin-bottom: 10px;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate; /* Necesario para border-radius */
+            border-spacing: 0;         /* Eliminar espacio entre celdas */
+            margin-top: 20px;
+            border-radius: 10px;       /* Bordes redondeados */
+            overflow: hidden;           /* Para que las esquinas se vean redondeadas */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px 15px;        /* Más padding */
+            text-align: center;
+        }
+
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #eee;
+        }
+    </style>
 </head>
 <body>
-<h1>📈 Gráfica de Predicciones</h1>
-    <img src="data:image/png;base64,{{ plot_url }}" alt="Gráfica de Predicciones"/>
-    </form>
+    <header>
+        <img src="{{ url_for('static', filename='Gategroup-Logo.webp') }}" alt="Logo">
+        <div>Predicción de Consumo</div>
+    </header>
 
-    {% if prediction %}
-        <h2>Predicción: {{ prediction }}</h2>
-    {% endif %}
+    <div class="content">
+        {% if report %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Residuo</th>
+                    <th>% Subir/Bajar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report %}
+                <tr>
+                    <td>{{ row['Product_Name'] }}</td>
+                    <td>{{ row['Predicted_Waste'] }}</td>
+                    <td>{{ row['Waste_Percentage'] }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No hay datos disponibles.</p>
+        {% endif %}
+    </div>
+    <div>
+        <h1>Grafica</h1>
+    </div>
 </body>
 </html>
