@@ -1,16 +1,7 @@
-# ============================================
-# 🌐 API Flask para predicción de consumo
-# ============================================
-
-from flask import Flask, request, jsonify, render_template
-import numpy as np
+from flask import Flask, render_template
 import pandas as pd
 import joblib
 from tensorflow import keras
-
-# ============================================
-# ⚙️ Inicialización
-# ============================================
 
 app = Flask(__name__)
 
@@ -21,71 +12,31 @@ PREPROC_PATH = "model/preprocesador_consumo_REAL_ADV_CORR_v1.joblib"
 model = keras.models.load_model(MODEL_PATH)
 preprocessor = joblib.load(PREPROC_PATH)
 
-print("✅ Modelo y preprocesador cargados correctamente")
-
-# ============================================
-# 🏠 Ruta principal (interfaz simple)
-# ============================================
-
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-# ============================================
-# 🔮 Endpoint de predicción
-# ============================================
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    try:
-        data = request.get_json(force=True)
-
-        # Convertir datos a DataFrame
-        df = pd.DataFrame([data])
-
-        # Preprocesar igual que en entrenamiento
-        X_p = preprocessor.transform(df)
-
-        # Hacer predicción
-        y_pred = model.predict(X_p)
-        y_pred_real = np.expm1(y_pred).flatten()[0]  # revertir log-transform
-
-        return jsonify({
-            "prediction": round(float(y_pred_real), 2)
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
-from flask import Flask, render_template
-import matplotlib.pyplot as plt
-import io
-import base64
-
-app = Flask(__name__)
+# Cargar datos originales
+df_original = pd.read_excel("data\[HackMTY2025]_ConsumptionPrediction_Dataset_v1.xlsx")
 
 @app.route("/")
 def home():
+    # Preparar features
+    df_analisis = df_original.copy()
+    df_analisis['Product_Category'] = df_analisis['Product_ID'].str.slice(0,3)
+    
+    features = ['Origin', 'Flight_Type', 'Service_Type', 'Passenger_Count', 'Product_Category']
+    X = preprocessor.transform(df_analisis[features])
+    
+    # Predecir
+    predicciones = model.predict(X).flatten()
+    
+    # Crear columnas de desperdicio
+    df_analisis['Predicted_Consumption'] = predicciones
+    df_analisis['Predicted_Waste'] = df_analisis['Standard_Specification_Qty'] - df_analisis['Predicted_Consumption']
+    df_analisis['Predicted_Waste'] = df_analisis['Predicted_Waste'].clip(lower=0)
+    df_analisis['Waste_Percentage'] = (df_analisis['Predicted_Waste'] / df_analisis['Standard_Specification_Qty'] * 100).round(2)
+    
+    # Tomar solo los primeros 3 productos para la tabla
+    report = df_analisis[['Product_Name', 'Predicted_Waste', 'Waste_Percentage']].head(10).to_dict(orient='records')
+    
+    return render_template("index.html", report=report)
 
-    predicciones = [10, 15, 12, 18, 20, 14]
-
-    fig, ax = plt.subplots()
-    ax.plot(predicciones, marker='o')
-    ax.set_title("Predicciones de Consumo")
-    ax.set_xlabel("Producto")
-    ax.set_ylabel("Cantidad Predicha")
-
-    img = io.BytesIO()
-    fig.savefig(img, format='png')
-    img.seek(0)
-    plot_url = base64.b64encode(img.getvalue()).decode()  # Convertir a base64
-    plt.close(fig)
-
-    return render_template("index.html", plot_url=plot_url)
-
-# ============================================
-# 🚀 Run local
-# ============================================
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
-    print("corriendo en {port}")
+if __name__ == "__main__":
+    app.run(debug=True)
